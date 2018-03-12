@@ -6,9 +6,8 @@ import time
 BROKER = "iot.cs.calvin.edu"
 PORT = 1883
 QOS = 0
-
-message = 1
-break = 0
+message =1
+break_out = False 
 
 # Callback when a message is published
 def on_publish(client, userdata, mid):
@@ -20,13 +19,13 @@ def on_connect(client, userdata, rc, *extra_params):
 
 # Callback when client receives a PUBLISH message from the broker
 def on_message(client, data, msg):
- global break
+ global break_out
  if msg.topic == "rtl5/button":
-  break = 1
-  return break
+  break_out = True
+  return break_out
  else:
-  break = 0
-  return break
+  break_out = False
+  return break_out
 
 # Setup MQTT client
 client = mqtt.Client()
@@ -40,7 +39,7 @@ client.subscribe("rtl5/button", qos=QOS)
 client.loop_start()
 
 
-while (break == 0):
+while (break_out == False):
   # Publish message to broker
  (result, num) = client.publish("rtl5/LED", message, qos=0)
  if result != 0:
