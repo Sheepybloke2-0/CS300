@@ -1,7 +1,10 @@
 from flask import Flask, render_template
 from flask_mqtt import Mqtt
+from flask_socketio import SocketIO
 import pygal
+import eventlet
 
+eventlet.monkey_patch()
 
 # ------ Globals -------------
 BROKER = "iot.cs.calvin.edu"
@@ -12,15 +15,21 @@ TITLE = 'Temperature of Fridge over Time'
 
 num_cans = 12
 current_cans = num_cans
-times_data =[]
-temp_data =[]
+times_data =[0]
+temp_data =[0]
+
+async_mode = None
 
 app = Flask(__name__)
 # Configs for Flask app
+app.config['SECRET'] = 'secretkey'
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['MQTT_BROKER_URL']   = BROKER
 app.config['MQTT_BROKER_PORT']  = PORT
 app.config['MQTT_REFRESH_TIME'] = REFRESH_TIME
+
 mqtt = Mqtt(app)
+socketio = SocketIO(app, async_mode=async_mode)
 
 
 # WebApp functions
@@ -42,9 +51,10 @@ def handle_publish(json_str):
 
 
 @socketio.on('mqtt_messsage')
-def handle_message(json_str):
+def handle_message(dict_msg):
     global times_data, temp_data, cur_cans
-    data = json.loads(json_str)
+    data = dict_msg
+    print(data['topic'], data['msg'])
     if data['topic'] is "rtl5/cur_cans":
         cur_cans = data['msg']
 
@@ -64,6 +74,7 @@ def handle_message(json_str):
 
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
+    print("Subscribing")
     mqtt.subscribe('rtl5/temp')
     mqtt.subscribe('rtl5/time')
     mqtt.subscribe('rtl5/num_cans')
@@ -71,13 +82,30 @@ def handle_connect(client, userdata, flags, rc):
 
 
 @mqtt.on_message()
-def handle_mqtt_message(client, userdata, msg):
+def handle_mqtt_message(client, userdata, message):
+    global times_data, temp_data, cur_cans
     data = dict(
-         topic=msg.topic,
-         payload=msg.payload.decode()
+         topic=message.topic,
+         msg=message.payload.decode()
     )
-    socketio.emit('mqtt_messsage', data=data)
+    if data['topic'] == u'rtl5/cur_cans':
+        cur_cans = data['msg']
+
+    if data['topic'] == u'rtl5/time':
+        cur_time = data['msg']
+        if len(times_data) <= 50:
+            times_data.append(cur_time)
+        else:
+            times_data[50] = cur_time
+
+    if data['topic'] == u'rtl5/temp':
+        cur_temp = data['msg']
+        if len(temp_data) <= 50:
+            temp_data.append(float(cur_temp))
+        else:
+            temp_data[50] = float(cur_temp)
+        socketio.emit('handle_messsage', data, broadcast=True)
 
 
 if __name__ == '__main__':
-    app = create_app()
+    socketio.run(app, host='0.0.0.0', debug=True)

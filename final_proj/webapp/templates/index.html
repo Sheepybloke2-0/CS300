@@ -2,6 +2,11 @@
 <html>
     <head>
         <title> Can Counter WebApp </title>
+
+        <style type="text/css">
+            {%include "static/main.css"%}
+        </style>
+        <meta http-equiv="refresh" content="20">
         <script type="text/javascript" src="http://kozea.github.com/pygal.js/javascripts/svg.jquery.js"></script>
         <script type="text/javascript" src="http://kozea.github.com/pygal.js/javascripts/pygal-tooltips.js"></script>
 
@@ -10,18 +15,22 @@
           $(document).ready(function() {
             var socket = io.connect('http://' + document.domain + ':' + location.port);
 
-            $('#update_can_number').click(function(event) {
+            $('form#update_can_number').click(function(event) {
                 var num_cans = $('#num_cans').val()
                 var data = '{ "topic": "rtl5/num_cans", "data": "' + num_cans'", "qos": "0"}'
                 socket.emit('update_can_number', data=data)
             });
 
+            socket.on('handle_message', function(data)  {
+                $('#log').text( data['msg'] );
+            })
           });
         </script>
     </head>
     <body>
         <h1> Can Counter WebApp </h1>
-        {{ bar_chart.render()|safe }}
-
+        {{ line_chart.render()|safe }}
+        <h2> Data Recieved:  </h2>
+        <p> The current temperature is <b><span id="log"></span></b> F </p>
     </body>
 </html>
