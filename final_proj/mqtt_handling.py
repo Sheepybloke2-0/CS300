@@ -9,7 +9,7 @@ PORT = 1883
 QOS = 0
 
 # Number of seconds between temp loging. For demo use 10s
-TEMP_LOG_TIME = 10
+TEMP_LOG_TIME = 2
 
 # GPIO pins
 ROLLER_SW = 23
@@ -72,7 +72,7 @@ def on_connect(client, userdata, rc, *extra_params):
 def on_can_nmb_msg(client, data, msg):
     global num_cans
     if msg.topic == "rtl5/num_cans":
-        num_cans = msg.payload
+        num_cans = int(msg.payload)
         print(num_cans)
 
 
@@ -89,6 +89,8 @@ if __name__ == '__main__':
     mqtt_client.on_message = on_can_nmb_msg
     mqtt_client.on_connect = on_connect
     mqtt_client.connect(BROKER, PORT, 60)
+    mqtt_client.subscribe('rtl5/num_cans', qos=QOS)
+    mqtt_client.loop_start()
 
     GPIO.add_event_detect(ROLLER_SW, GPIO.RISING, callback=update_can_count, bouncetime=200)
     GPIO.add_event_detect(RESET_BTN, GPIO.RISING, callback=reset_can_count, bouncetime=200)
