@@ -1,0 +1,72 @@
+<html>
+<head>
+    <link rel="stylesheet" href="main.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"
+    type="text/javascript"></script>
+    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+</head>
+<body>
+    <h2>CS300 Final Project: Can Counter</h2>
+    <script>
+        // Create MQTT client using websockets
+        client = new Paho.MQTT.Client('iot.cs.calvin.edu', 8080, 'rtl5');
+        // set callback handlers
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+        // connect the client
+        client.connect({onSuccess:onConnect});
+        // called when the client connects
+        function onConnect() {
+         // Once connection has been made, subscribe to temperature topic
+         console.log("Connected!");
+         client.subscribe("rtl5/temp");
+         client.subscribe("rtl5/time");
+         client.subscribe("rtl5/cur_cans");
+         client.subscribe("rtl5/num_cans");
+        }
+
+        // called when the client loses its connection
+        function onConnectionLost(responseObject) {
+         if (responseObject.errorCode !== 0) {
+          console.log("Connection Lost:"+responseObject.errorMessage);
+         }
+        }
+
+        // called when a message arrives
+        function onMessageArrived(message) {
+         console.log("Message Arrived: " + message.payloadString);
+         console.log("Topic: " + message.destinationName);
+         console.log("QoS: " + message.qos);
+         if (message.destinationName == 'rtl5/temp') {
+          document.getElementById('temp').innerHTML=message.payloadString;
+         }
+
+         if (message.destinationName == 'rtl5/cur_cans') {
+          document.getElementById('current_cans').innerHTML=message.payloadString;
+         }
+
+         if (message.destinationName == 'rtl5/num_cans') {
+          document.getElementById('total_num_cans').innerHTML=message.payloadString;
+         }
+        }
+
+        // publish an num_cans message
+        function sendMessage(state) {
+         console.log("Publish num_cans = " + state);
+         var message = new Paho.MQTT.Message(state);
+         message.destinationName = 'rtl5/num_cans';
+         message.qos = 0;
+         client.send(message);
+        }
+    </script>
+    Change the total number of cans in the system:
+    <input type="text" id="num_cans" size=20 value="" >
+    <input type="button" value="Submit" onclick="sendMessage(document.getElementById('num_cans').value)">
+    <hr>
+    Refridgerator temperature sensor reading:<b>
+    <span id="temp"></span></b> degrees Farenheit.
+    <hr>
+    Current number of cans in the system:</b>
+    <span id="current_cans"></span> cans out of <span id="total_num_cans"></span></b>.
+</body>
+</html>
