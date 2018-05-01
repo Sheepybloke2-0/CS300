@@ -24,6 +24,14 @@ def c_to_f(c):
         return c * 9.0 / 5.0 + 32.0
 
 
+def publish_num_cans():
+    global num_cans
+    result, num = mqtt_client.publish("rtl5/num_cans", num_cans, QOS)
+    if result != 0:
+        print("ERROR: Can count PUBLISH failed")
+    print('Total number of cans is ' + str(num_cans))
+
+
 def publish_can_count(cans):
     result, num = mqtt_client.publish("rtl5/cur_cans", cans, QOS)
     if result != 0:
@@ -69,12 +77,17 @@ def on_connect(client, userdata, rc, *extra_params):
     print("Connection to " + BROKER + " with result code !" + str(rc))
 
 
-def on_can_nmb_msg(client, data, msg):
+def on_message(client, data, msg):
     global num_cans
+    global current_cans
     if msg.topic == "rtl5/num_cans":
         num_cans = int(msg.payload)
         print(num_cans)
-
+    elif msg.topic == "rtl5/status":
+        if msg.payload == b'Connected':
+            print("A client has connected")
+            publish_can_count(current_cans)
+            publish_num_cans()
 
 if __name__ == '__main__':
     # ------------ Setup --------------------
@@ -86,10 +99,11 @@ if __name__ == '__main__':
     temp_sensor = MCP9808.MCP9808()
 
     mqtt_client = mqtt.Client()
-    mqtt_client.on_message = on_can_nmb_msg
+    mqtt_client.on_message = on_message
     mqtt_client.on_connect = on_connect
     mqtt_client.connect(BROKER, PORT, 60)
     mqtt_client.subscribe('rtl5/num_cans', qos=QOS)
+    mqtt_client.subscribe('rtl5/status', qos=QOS)
     mqtt_client.loop_start()
 
     GPIO.add_event_detect(ROLLER_SW, GPIO.RISING, callback=update_can_count, bouncetime=200)
