@@ -1,6 +1,6 @@
 '''
 CS 300 Final Project: Can Counter
-By Dan Michaels and Reuben Lewis
+By Dan Michaels (dwm5) and Reuben Lewis (rtl5)
 mqtt_handling.py:
 A short Python program handling the counting of the number of cans in a rack
 and transfering the data over MQTT to a webpage.
